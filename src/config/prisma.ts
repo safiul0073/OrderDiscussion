@@ -1,6 +1,6 @@
-const { PrismaClient } = require('@prisma/client');
+import { PrismaClient } from '@prisma/client';
 
 // Use a singleton Prisma client to avoid exhausting database connections
 const prisma = new PrismaClient();
 
-module.exports = prisma;
+export default prisma;

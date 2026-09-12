@@ -1,48 +1,72 @@
 # Orders API Service
 
+A high-performance, strictly-typed Node.js & TypeScript API for retrieving user order histories.
+
 ## Setup Instructions
 
 ### Prerequisites
-* Node.js (v18+)
-* Docker & Docker Compose
 
-### 1. Start the Database
-Run the following command to start PostgreSQL in the background.
+- Node.js (v18+)
+- PostgreSQL (either via Docker OR a local installation)
+
+### 1. Environment Variables (.env setup)
+
+Before running the application, you must configure your environment variables. 
+We provide an example environment file for you to use. Run the following command in your terminal:
+
+```bash
+cp .example.env .env
+```
+
+Open the newly created `.env` file and ensure the `DATABASE_URL` is set correctly for your environment (see Database Setup below).
+
+### 2. Database Setup
+
+You can run PostgreSQL either via Docker or using a local installation.
+
+#### Option A: With Docker (Recommended)
+If you have Docker installed, simply run the following command to start a containerized Postgres instance. 
+The default `DATABASE_URL` in `.example.env` is already configured for this setup.
 
 ```bash
 docker-compose up -d
 ```
 
-### 2. Install Dependencies
+#### Option B: Without Docker (Local PostgreSQL)
+If you do not have Docker installed, you can run PostgreSQL locally:
+1. Install PostgreSQL on your machine (e.g., via Homebrew on Mac: `brew install postgresql`).
+2. Start the PostgreSQL service.
+3. Create a new database for this project in your terminal (e.g., `createdb orders_db`).
+4. Update your `.env` file with your local PostgreSQL credentials. It should look like this:
+   ```env
+   DATABASE_URL="postgresql://<YOUR_USER>:<YOUR_PASSWORD>@localhost:5432/<YOUR_DB_NAME>?schema=public"
+   ```
+
+### 3. Install Dependencies
+
 ```bash
 npm install
 ```
 
-### 3. Push Database Schema
-We use Prisma ORM. Push the schema to the database:
+### 4. Initialize and Seed the Database
+
+Run the following commands to push the schema to the database and generate mock data (~5,000 users, ~50,000 orders):
+
 ```bash
 npx prisma db push
-```
-
-### 4. Seed the Database
-A dynamic seed script is provided using Faker.js. By default, it generates 100 users and 1,000 orders.
-To generate massive amounts of data dynamically, prefix the command with environment variables:
-
-```bash
-# Default seed (100 users, 1000 orders)
-npx prisma db seed
-
-# Massive dynamic seed (1,000 users, 50,000 orders)
-SEED_USER_COUNT=1000 SEED_ORDERS_PER_USER=50 npx prisma db seed
+npm run seed
 ```
 
 ### 5. Run the Server
+
 ```bash
 npm run dev
 ```
+
 The server will start on `http://localhost:3000`.
 
 ### 6. Run the Tests
+
 ```bash
 npm test
 ```
@@ -52,6 +76,7 @@ npm test
 The API relies on `x-user-id` and `x-user-role` headers to simulate authentication.
 
 **1. Valid Request (User views their own orders):**
+
 ```bash
 curl -X GET http://localhost:3000/api/users/1/orders \
   -H "x-user-id: 1" \
@@ -59,6 +84,7 @@ curl -X GET http://localhost:3000/api/users/1/orders \
 ```
 
 **2. Forbidden Request (User tries to view someone else's):**
+
 ```bash
 curl -X GET http://localhost:3000/api/users/2/orders \
   -H "x-user-id: 1" \
@@ -66,6 +92,7 @@ curl -X GET http://localhost:3000/api/users/2/orders \
 ```
 
 **3. Admin Request (Admin views someone else's):**
+
 ```bash
 curl -X GET http://localhost:3000/api/users/2/orders \
   -H "x-user-id: 99" \

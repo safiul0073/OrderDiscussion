@@ -2,15 +2,17 @@
 
 ### 1. What did the requirements not tell you?
 The project requirements were intentionally sparse. I had to make several assumptions to build a complete API:
-*   **Authentication mechanism:** I assumed authentication is handled upstream (e.g., by an API Gateway) that forwards user context to this service via HTTP headers (`x-user-id` and `x-user-role`).
+*   **[LEAST CONFIDENT / HIGHEST RISK] Authentication mechanism:** I assumed authentication is handled upstream (e.g., by an API Gateway) that forwards user context to this service via HTTP headers (`x-user-id` and `x-user-role`). If this service is exposed directly to the internet without that gateway, anyone can spoof any user.
 *   **Response format:** I assumed that if a user has no orders, the API should return a `200 OK` with an empty array `[]` rather than a `404 Not Found`. 
 *   **Pagination strategy:** I assumed limit/offset pagination is sufficient for the current scale (~50,000 orders total).
 *   **Local Setup & DX (Docker):** I assumed other developers would appreciate a frictionless setup, so I included a `docker-compose.yml` that automatically initializes the database.
 
 ### 2. What did you use AI for, and where did you override it?
-I used AI to quickly scaffold the Express boilerplate, the Jest test configuration, and the Docker Compose setup. 
-
-However, I explicitly directed the AI to write the authorization middleware rather than just returning a simple controller. Furthermore, I directed the use of **Prisma ORM** instead of raw SQL to ensure type safety, provide a robust dynamic seeder, and handle database indexing seamlessly. I explicitly defined a **composite database index on `[userId, createdAt]`** within the Prisma schema for efficient sorting. I also directed the inclusion of an `express-rate-limit` middleware.
+I used an AI assistant to migrate the project to TypeScript, write the database seeder, and scaffold tests. However, I had to override it in several key areas where it got things wrong:
+1.  **Unbounded Pagination (Security/Performance):** The AI initially generated a pagination implementation that allowed any `limit`. This violated the "must stay responsive" requirement, as a user could request all 50,000 records at once. I overrode this by adding strict bounds-checking in the controller, capping the limit to 100 max.
+2.  **Seeder Performance:** The AI initially wrote a naive `prisma/seed.ts` script that created records one by one in a loop, which took too long. I manually overrode the strategy to use batched inserts and raw SQL `TRUNCATE TABLE ... RESTART IDENTITY CASCADE` to ensure fast, deterministic ID generation.
+3.  **Pathing Bugs During TS Migration:** When moving to TypeScript, the AI relocated the Prisma client but failed to update the relative imports in `src/controllers/orders.ts`, causing a `MODULE_NOT_FOUND` crash. I tracked down the stack trace and corrected the paths.
+4.  **Sorting Optimization:** The AI just added `orderBy: { createdAt: 'desc' }`. I recognized this would cause a full-table scan, so I manually added a composite B-Tree index `@@index([userId, createdAt(sort: Desc)])` to the Prisma schema to guarantee sub-millisecond query times.
 
 ### 3. What breaks first at 100x this data?
 At 100x the data (5,000,000 orders), two primary systems will break:
