@@ -7,7 +7,7 @@
 * Docker & Docker Compose
 
 ### 1. Start the Database
-Run the following command to start PostgreSQL in the background. It will automatically run the schema file located in `db/schema.sql`.
+Run the following command to start PostgreSQL in the background.
 
 ```bash
 docker-compose up -d
@@ -18,19 +18,31 @@ docker-compose up -d
 npm install
 ```
 
-### 3. Seed the Database
-A seed script is provided to populate some mock data:
+### 3. Push Database Schema
+We use Prisma ORM. Push the schema to the database:
 ```bash
-npm run seed
+npx prisma db push
 ```
 
-### 4. Run the Server
+### 4. Seed the Database
+A dynamic seed script is provided using Faker.js. By default, it generates 100 users and 1,000 orders.
+To generate massive amounts of data dynamically, prefix the command with environment variables:
+
+```bash
+# Default seed (100 users, 1000 orders)
+npx prisma db seed
+
+# Massive dynamic seed (1,000 users, 50,000 orders)
+SEED_USER_COUNT=1000 SEED_ORDERS_PER_USER=50 npx prisma db seed
+```
+
+### 5. Run the Server
 ```bash
 npm run dev
 ```
 The server will start on `http://localhost:3000`.
 
-### 5. Run the Tests
+### 6. Run the Tests
 ```bash
 npm test
 ```

@@ -1,4 +1,4 @@
-const pool = require('../db/pool');
+const prisma = require('../db/prisma');
 
 const getUserOrders = async (req, res) => {
     try {
@@ -7,29 +7,36 @@ const getUserOrders = async (req, res) => {
             return res.status(400).json({ error: 'Invalid user ID format' });
         }
 
-        // Pagination setup (Limit/Offset) to handle scale
+        // Pagination setup
         const limit = parseInt(req.query.limit, 10) || 10;
         const page = parseInt(req.query.page, 10) || 1;
-        const offset = (page - 1) * limit;
+        const skip = (page - 1) * limit;
 
-        // Fetch orders. The idx_orders_user_id_created_at index makes this highly performant.
-        const query = `
-            SELECT id, total_amount, status, created_at 
-            FROM orders 
-            WHERE user_id = $1 
-            ORDER BY created_at DESC 
-            LIMIT $2 OFFSET $3
-        `;
+        // Fetch orders using Prisma
+        const orders = await prisma.order.findMany({
+            where: {
+                userId: targetUserId
+            },
+            orderBy: {
+                createdAt: 'desc'
+            },
+            take: limit,
+            skip: skip,
+            select: {
+                id: true,
+                totalAmount: true,
+                status: true,
+                createdAt: true
+            }
+        });
 
-        const { rows } = await pool.query(query, [targetUserId, limit, offset]);
-
-        // Requirement: "Handle users who have no orders" -> return []
+        // Return 200 with data (empty array if no orders exist)
         res.status(200).json({
-            data: rows,
+            data: orders,
             meta: {
                 limit,
                 page,
-                count: rows.length
+                count: orders.length
             }
         });
 

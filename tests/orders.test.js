@@ -1,10 +1,12 @@
 const request = require('supertest');
 const app = require('../src/app');
-const pool = require('../src/db/pool');
+const prisma = require('../src/db/prisma');
 
-// Mock the DB query
-jest.mock('../src/db/pool', () => ({
-    query: jest.fn()
+// Mock Prisma
+jest.mock('../src/db/prisma', () => ({
+    order: {
+        findMany: jest.fn()
+    }
 }));
 
 describe('GET /api/users/:id/orders', () => {
@@ -28,7 +30,7 @@ describe('GET /api/users/:id/orders', () => {
     });
 
     it('should allow an admin to view any user\'s orders', async () => {
-        pool.query.mockResolvedValueOnce({ rows: [] });
+        prisma.order.findMany.mockResolvedValueOnce([]);
 
         const response = await request(app)
             .get('/api/users/2/orders')
@@ -36,14 +38,14 @@ describe('GET /api/users/:id/orders', () => {
             .set('x-user-role', 'admin');
         
         expect(response.status).toBe(200);
-        expect(pool.query).toHaveBeenCalledTimes(1);
+        expect(prisma.order.findMany).toHaveBeenCalledTimes(1);
     });
 
     it('should return a user\'s orders if requested by themselves', async () => {
         const mockOrders = [
-            { id: 1, total_amount: 100, status: 'completed' }
+            { id: 1, totalAmount: 100, status: 'completed' }
         ];
-        pool.query.mockResolvedValueOnce({ rows: mockOrders });
+        prisma.order.findMany.mockResolvedValueOnce(mockOrders);
 
         const response = await request(app)
             .get('/api/users/1/orders')
@@ -55,7 +57,7 @@ describe('GET /api/users/:id/orders', () => {
     });
 
     it('should return an empty array if the user has no orders', async () => {
-        pool.query.mockResolvedValueOnce({ rows: [] });
+        prisma.order.findMany.mockResolvedValueOnce([]);
 
         const response = await request(app)
             .get('/api/users/1/orders')
